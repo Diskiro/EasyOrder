@@ -3,15 +3,13 @@ import React, { useState, useMemo } from 'react'
 import { useUI } from '../context/UIContext'
 import { useTables, useCategories, useProducts, useOrderMutation, useActiveOrders, useUpdateOrderItems, useReservationMutations, useTableMutations, type Product, type Reservation, type Table } from '../hooks/useData'
 import { useAuth } from '../context/AuthContext'
-import { Search, ShoppingCart, Plus, Minus, CheckCircle, LayoutGrid, List as ListIcon, ChevronLeft } from 'lucide-react'
-import clsx from 'clsx'
-import { Button, Stack, ButtonGroup } from '@mui/material'
+import { Search, ShoppingCart, CheckCircle, LayoutGrid, List as ListIcon, ChevronLeft } from 'lucide-react'
+import { Button, ButtonGroup } from '@mui/material'
 import { useLocation } from 'react-router-dom'
-
-// Cart Item Type
-interface CartItem extends Product {
-    quantity: number
-}
+import TableGrid from '../components/tables/TableGrid'
+import TableList from '../components/tables/TableList'
+import OrderCart, { type CartItem } from '../components/tables/OrderCart'
+import ProductMenu from '../components/tables/ProductMenu'
 
 export default function TablesView() {
     const { showAlert, showConfirm } = useUI()
@@ -121,10 +119,6 @@ export default function TablesView() {
         }).filter(item => item.quantity > 0))
     }
 
-    const cartTotal = useMemo(() => {
-        return cart.reduce((total, item) => total + (item.price * item.quantity), 0)
-    }, [cart])
-
     const handleSubmitOrder = async () => {
         if (!selectedTableId || !user) return
         if (!canEdit) return
@@ -204,81 +198,7 @@ export default function TablesView() {
 
     // Calculate total items for badge
     const totalItems = useMemo(() => cart.reduce((acc, item) => acc + item.quantity, 0), [cart])
-
-    // Reusable Cart UI
-    const renderCart = (isMobile: boolean = false) => (
-        <div className={clsx(
-            "bg-[#1F2329] border border-gray-800 flex flex-col shadow-2xl",
-            isMobile ? "fixed inset-0 z-50 w-full h-full" : "w-80 rounded-2xl h-full"
-        )}>
-            <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-[#1F2329] shrink-0"
-                style={isMobile ? { borderTopLeftRadius: 0, borderTopRightRadius: 0 } : { borderTopLeftRadius: '1rem', borderTopRightRadius: '1rem' }}>
-                <h3 className="font-bold text-white flex items-center gap-2">
-                    {isMobile && (
-                        <Button onClick={() => setIsCartOpen(false)} sx={{ color: 'gray', minWidth: 'auto', p: 1, mr: 1 }}>
-                            <ChevronLeft size={24} />
-                        </Button>
-                    )}
-                    <ShoppingCart size={18} />
-                    {activeOrder ? `Orden #${activeOrder.id} ` : 'Orden Actual'}
-                </h3>
-                <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded">{totalItems} art.</span>
-            </div>
-
-            {/* Warning Banner */}
-            {!canEdit && (
-                <div className="bg-red-500/20 text-red-200 px-4 py-2 text-xs font-bold border-b border-red-500/20 flex items-center justify-center shrink-0">
-                    <div className="mr-2">Solo Lectura</div>
-                    Requiere acceso de administrador
-                </div>
-            )}
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                {cart.length === 0 && (
-                    <div className="text-center text-gray-500 mt-10 p-4">
-                        <p className="mb-2">El carrito está vacío</p>
-                        <p className="text-xs">Selecciona productos del menú para agregar.</p>
-                    </div>
-                )}
-                {cart.map(item => (
-                    <div key={item.id} className="flex justify-between items-center bg-[#141619] p-3 rounded-lg border border-gray-800">
-                        <div className="flex-1 min-w-0 mr-2">
-                            <div className="text-sm font-bold text-gray-300 truncate">{item.name}</div>
-                            <div className="text-xs text-[#FBBF24]">${(item.price * item.quantity).toFixed(2)}</div>
-                        </div>
-                        <div className="flex items-center bg-gray-800 rounded">
-                            <Button size="small" disabled={!canEdit} onClick={() => handleUpdateQuantity(item.id, -1)} sx={{ minWidth: 32, p: 0.5, color: 'gray' }}><Minus size={12} /></Button>
-                            <span className="text-xs font-bold w-4 text-center text-white">{item.quantity}</span>
-                            <Button size="small" disabled={!canEdit} onClick={() => handleUpdateQuantity(item.id, 1)} sx={{ minWidth: 32, p: 0.5, color: 'gray' }}><Plus size={12} /></Button>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            <div className="p-4 bg-[#141619] border-t border-gray-800 shrink-0"
-                style={isMobile ? { paddingBottom: '2rem' } : { borderBottomLeftRadius: '1rem', borderBottomRightRadius: '1rem' }}>
-                <div className="flex justify-between items-end mb-4">
-                    <span className="text-gray-400 text-sm">Total a pagar</span>
-                    <span className="text-2xl font-bold text-white">${cartTotal.toFixed(2)}</span>
-                </div>
-                <Button
-                    fullWidth
-                    variant="contained"
-                    color="primary"
-                    size="large"
-                    onClick={handleSubmitOrder}
-                    disabled={createOrder.isPending || updateOrderItems.isPending || !canEdit || cart.length === 0}
-                    sx={{ color: 'black', fontWeight: 'bold' }}
-                >
-                    {createOrder.isPending || updateOrderItems.isPending
-                        ? 'Procesando...'
-                        : !canEdit
-                            ? 'SOLO LECTURA'
-                            : (activeOrder ? 'ACTUALIZAR ORDEN' : 'CONFIRMAR PEDIDO')}
-                </Button>
-            </div>
-        </div>
-    )
+    const cartTotal = useMemo(() => cart.reduce((total, item) => total + (item.price * item.quantity), 0), [cart])
 
     if (loadingTables || loadingCats || loadingProds) return <div className="p-8 text-white">Cargando datos...</div>
 
@@ -338,65 +258,16 @@ export default function TablesView() {
                     {!selectedTableId ? (
                         <>
                             {viewMode === 'grid' ? (
-                                /* TABLE MAP GRID */
-                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 pb-20">
-                                    {tables?.map(table => (
-                                        <button
-                                            key={table.id}
-                                            onClick={() => handleTableClick(table)} // Changed handler to support assignment
-                                            className={clsx(
-                                                "aspect-square rounded-2xl relative group transition-all duration-300 hover:scale-[1.02]",
-                                                "bg-[#1F2329]"
-                                            )}
-                                        >
-                                            <div className={clsx(
-                                                "absolute inset-2 md:inset-4 rounded-xl flex flex-col items-center justify-center border-2 transition-all shadow-xl",
-                                                table.status === 'occupied'
-                                                    ? "border-pink-500/50 bg-pink-500/10"
-                                                    : assigningReservation ? "border-blue-500/50 bg-blue-500/10 cursor-alias animate-pulse" : "border-green-500/50 bg-green-500/10"
-                                            )}>
-                                                <div className={clsx(
-                                                    "w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center mb-1 md:mb-2 shadow-lg",
-                                                    table.status === 'occupied' ? "bg-pink-500 text-white" : assigningReservation ? "bg-blue-500 text-white" : "bg-green-500 text-white"
-                                                )}>
-                                                    <span className="text-lg md:text-xl font-bold">{table.number}</span>
-                                                </div>
-                                                <span className={clsx("text-[10px] md:text-xs font-bold uppercase", table.status === 'occupied' ? "text-pink-400" : assigningReservation ? "text-blue-400" : "text-green-400")}>
-                                                    {table.status === 'occupied' ? 'Ocupada' : assigningReservation ? 'Asignar' : 'Disponible'}
-                                                </span>
-                                            </div>
-                                            <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <div className="bg-black/80 text-white text-[10px] px-2 py-1 rounded">{table.capacity} Pax</div>
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
+                                <TableGrid
+                                    tables={tables}
+                                    onTableClick={handleTableClick}
+                                    assigningReservation={assigningReservation}
+                                />
                             ) : (
-                                /* LIST VIEW (Alternative to Grid) */
-                                <div className="bg-[#1F2329] rounded-2xl p-6 border border-gray-800">
-                                    <h2 className="text-xl font-bold text-white mb-4">Vista de Lista</h2>
-                                    <div className="grid gap-4">
-                                        {tables?.map(table => (
-                                            <div key={table.id} onClick={() => handleTableClick(table)} className="flex items-center justify-between p-4 bg-[#141619] rounded-xl border border-gray-800 hover:border-gray-600 cursor-pointer">
-                                                <div className="flex items-center gap-4">
-                                                    <div className={clsx(
-                                                        "w-10 h-10 rounded-full flex items-center justify-center font-bold",
-                                                        table.status === 'occupied' ? "bg-pink-500 text-white" : "bg-green-500 text-white"
-                                                    )}>
-                                                        {table.number}
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-bold text-gray-200">Mesa {table.number}</div>
-                                                        <div className="text-sm text-gray-500">{table.capacity} Personas</div>
-                                                    </div>
-                                                </div>
-                                                <div className={clsx("px-3 py-1 rounded-full text-xs font-bold uppercase", table.status === 'occupied' ? "bg-pink-500/20 text-pink-400" : "bg-green-500/20 text-green-400")}>
-                                                    {table.status}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
+                                <TableList
+                                    tables={tables}
+                                    onTableClick={handleTableClick}
+                                />
                             )}
                         </>
                     ) : (
@@ -430,88 +301,50 @@ export default function TablesView() {
                                             </Button>
                                         )}
                                     </div>
-
-                                    <div className="w-full overflow-x-auto pb-2 custom-scrollbar">
-                                        <Stack direction="row" spacing={1} sx={{ minWidth: 'max-content', px: 0.5 }}>
-                                            <Button
-                                                variant={selectedCategory === null ? "contained" : "outlined"}
-                                                color="primary"
-                                                onClick={() => setSelectedCategory(null)}
-                                                sx={{ borderRadius: 8, whiteSpace: 'nowrap', color: selectedCategory === null ? 'black' : 'gray', borderColor: 'gray', minWidth: 'auto', px: 3 }}
-                                            >
-                                                Todas
-                                            </Button>
-                                            {categories?.map(c => (
-                                                <Button
-                                                    key={c.id}
-                                                    variant={selectedCategory === c.id ? "contained" : "outlined"}
-                                                    color="primary"
-                                                    onClick={() => setSelectedCategory(c.id)}
-                                                    sx={{ borderRadius: 8, whiteSpace: 'nowrap', color: selectedCategory === c.id ? 'black' : 'gray', borderColor: 'gray', minWidth: 'auto', px: 3 }}
-                                                >
-                                                    {c.name}
-                                                </Button>
-                                            ))}
-                                        </Stack>
-                                    </div>
                                 </div>
 
-                                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                                    {(selectedCategory
-                                        ? categories?.filter(c => c.id === selectedCategory)
-                                        : categories
-                                    )?.map(category => {
-                                        const categoryProducts = filteredProducts.filter(p => p.category_id === category.id)
-
-                                        if (categoryProducts.length === 0) return null
-
-                                        return (
-                                            <div key={category.id} className="mb-6">
-                                                <h3 className="text-lg font-bold text-[#FBBF24] mb-3 sticky top-0 bg-[#111315] py-2 z-10 border-b border-gray-800">
-                                                    {category.name}
-                                                </h3>
-                                                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                                                    {categoryProducts.map(product => (
-                                                        <button
-                                                            key={product.id}
-                                                            onClick={() => handleAddToOrder(product)}
-                                                            disabled={!canEdit} // Disable if restricted
-                                                            className={clsx(
-                                                                "group text-left bg-[#1F2329] p-4 rounded-xl border border-transparent transition-all relative overflow-hidden",
-                                                                canEdit
-                                                                    ? "hover:border-[#FBBF24]/50 hover:bg-[#252a30] cursor-pointer"
-                                                                    : "opacity-50 cursor-not-allowed grayscale"
-                                                            )}
-                                                        >
-                                                            {canEdit && (
-                                                                <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                    <div className="bg-[#FBBF24] text-black p-1 rounded-full"><Plus size={14} /></div>
-                                                                </div>
-                                                            )}
-                                                            <div className="flex justify-between items-start mb-1">
-                                                                <h3 className="font-bold text-gray-200 line-clamp-1 mr-2">{product.name}</h3>
-                                                                <span className="text-[#FBBF24] font-mono font-bold text-sm">${product.price}</span>
-                                                            </div>
-                                                            <p className="text-xs text-gray-500 mb-0 line-clamp-2 h-8">{product.description}</p>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
+                                <ProductMenu
+                                    categories={categories}
+                                    products={filteredProducts}
+                                    selectedCategory={selectedCategory}
+                                    onSelectCategory={setSelectedCategory}
+                                    onAddToCart={handleAddToOrder}
+                                    canEdit={canEdit}
+                                />
                             </div>
 
                             {/* Desktop static Cart */}
                             <div className="hidden lg:flex w-80 h-full">
-                                {renderCart(false)}
+                                <OrderCart
+                                    cart={cart}
+                                    activeOrder={activeOrder}
+                                    canEdit={canEdit}
+                                    isLoading={createOrder.isPending || updateOrderItems.isPending}
+                                    onUpdateQuantity={handleUpdateQuantity}
+                                    onSubmit={handleSubmitOrder}
+                                />
                             </div>
 
                             {/* Mobile Cart Modal/Drawer */}
                             {isCartOpen && (
-                                <div className="lg:hidden fixed inset-0 z-50 flex flex-col animate-slide-in-right">
-                                    {renderCart(true)}
-                                </div>
+                                <>
+                                    {/* Backdrop */}
+                                    <div
+                                        className="lg:hidden fixed inset-0 z-[55] bg-black/60 backdrop-blur-sm transition-opacity"
+                                        onClick={() => setIsCartOpen(false)}
+                                    />
+                                    {/* Drawer is self-positioned by OrderCart's isMobile prop */}
+                                    <OrderCart
+                                        cart={cart}
+                                        activeOrder={activeOrder}
+                                        canEdit={canEdit}
+                                        isLoading={createOrder.isPending || updateOrderItems.isPending}
+                                        onUpdateQuantity={handleUpdateQuantity}
+                                        onSubmit={handleSubmitOrder}
+                                        isMobile={true}
+                                        onClose={() => setIsCartOpen(false)}
+                                    />
+                                </>
                             )}
 
                         </div>
