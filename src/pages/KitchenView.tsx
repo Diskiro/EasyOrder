@@ -42,11 +42,11 @@ export default function KitchenView() {
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold text-white flex items-center gap-3">
                     <ChefHat size={32} />
-                    Kitchen Display System
+                    Sistema de visualización de cocina
                 </h1>
                 <div className="text-gray-400 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                    Live Updates
+                    Actualización en tiempo real
                 </div>
             </div>
 
@@ -54,7 +54,7 @@ export default function KitchenView() {
                 {orders?.length === 0 && (
                     <div className="col-span-full flex flex-col items-center justify-center text-gray-500 py-20">
                         <CheckCircle size={64} className="mb-4 opacity-20" />
-                        <p className="text-xl">all orders completed</p>
+                        <p className="text-xl">todas las ordenes completadas</p>
                     </div>
                 )}
 
